@@ -1,45 +1,67 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 
+import { getNewsItemById } from '../store/actions/index';
 import Alert from 'react-bootstrap/Alert';
 import { showToast } from './utils/ShowToasts';
 
-const NewNews = () => {
+const EditNews = () => {
+	const { id } = useParams();
+	const dispatch = useDispatch();
 	const navigate = useNavigate();
+	const [ inputValues, setInputValues ] = useState({
+		title: '',
+		body: '',
+		author: ''
+	});
 
-	const addNewsToDB = async (values) => {
+	useEffect(
+		() => {
+			dispatch(getNewsItemById(id)).then((action) => {
+				setInputValues({
+					title: action.payload.newsItem ? action.payload.newsItem.title : '',
+					body: action.payload.newsItem ? action.payload.newsItem.body : '',
+					author: action.payload.newsItem ? action.payload.newsItem.author : ''
+				});
+			});
+		},
+		[ dispatch, id ]
+	);
+
+	const editNews = async (values) => {
 		try {
-			const response = await axios.post('/api/news', {
+			const response = await axios.patch(`/api/news/${id}`, {
 				title: values.title,
 				body: values.body,
 				author: values.author
 			});
 			console.log('response is', response);
-			showToast('success', 'successfully added news post');
-			navigate('/');
+			showToast('success', 'successfully edited news post');
 		} catch (error) {
 			console.log('error is', error);
-			showToast('error', 'something went wrong while creating the news post, try again later');
+			showToast('error', 'something went wrong, please try again later');
 		}
 	};
 
 	const formik = useFormik({
 		initialValues: {
-			title: '',
-			body: '',
-			author: ''
+			title: inputValues.title,
+			body: inputValues.body,
+			author: inputValues.author
 		},
+		enableReinitialize: true,
 		validationSchema: Yup.object({
 			title: Yup.string().max(100, 'Must be 30 characters or less').required('Sorry, title is required'),
 			body: Yup.string().max(500, 'Must be 500 characters or less').required('Sorry, body is required'),
 			author: Yup.string().max(30, 'Name must be less than 30 characters').required('Sorry, author is required')
 		}),
 		onSubmit: (values, { resetForm }) => {
-			addNewsToDB(values);
-			resetForm();
+			editNews(values);
+			navigate(`/news/${id}`);
 		}
 	});
 	return (
@@ -93,11 +115,11 @@ const NewNews = () => {
 				</div>
 
 				<button className="btn btn-primary mt-4" type="submit">
-					Add news
+					Edit news
 				</button>
 			</form>
 		</React.Fragment>
 	);
 };
 
-export default NewNews;
+export default EditNews;
